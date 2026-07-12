@@ -6,7 +6,7 @@ class TColors {
 
   static const primary = Color(0xFFE8500A); // Orange principal
   static const primaryDark = Color(0xFFC44008); // Orange foncé
-  static const bg = Color(0xFF0F1B2D); // Fond sombre bleu nuit
+  static const bg = Color(0xFF08102C); // Fond sombre bleu
   static const surface = Color(0xFF1A2B40); // Surfaces cartes
   static const border = Color(0xFF2A3F58); // Bordures
   static const text = Color(0xFFFFFFFF); // Texte principal

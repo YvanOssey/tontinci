@@ -39,18 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     // Logo cercle avec mains
-                    Container(
+                    // Logo image
+                    Image.asset(
+                      'assets/images/logo.png',
                       width: 90,
                       height: 90,
-                      decoration: BoxDecoration(
-                        color: TColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.people_rounded,
-                        color: Colors.white,
-                        size: 48,
-                      ),
                     ),
                     const SizedBox(height: 16),
 
