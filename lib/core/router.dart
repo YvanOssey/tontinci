@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../features/auth/splash_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/inscription_screen.dart';
 import '../features/home/home_screen.dart';
@@ -12,8 +13,12 @@ import '../features/profil/profil_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 
 final router = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(
+      path: '/splash',
+      builder: (c, s) => const SplashScreen(),
+    ),
     GoRoute(
       path: '/login',
       builder: (c, s) => const LoginScreen(),
