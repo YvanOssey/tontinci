@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text("Groupes actifs", style: TText.h3),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () => context.go('/tontine/groupes'),
                           child: Text(
                             "Voir tout >",
                             style: GoogleFonts.spaceGrotesk(
@@ -201,7 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: g['icon'],
                           iconColor: g['iconColor'],
                           iconBg: g['iconBg'],
-                          onTap: () => context.go('/tontine/detail'),
+                          onTap: () =>
+                              context.go('/tontine/detail/${g['nom']}'),
                         );
                       },
                     ),
@@ -229,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context.go('/home');
                 break;
               case 1:
-                context.go('/tontine/create');
+                context.go('/tontine/groupes');
                 break;
               case 2:
                 context.go('/cotisation');
