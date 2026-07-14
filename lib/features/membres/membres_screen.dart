@@ -12,7 +12,7 @@ class MembresScreen extends StatefulWidget {
 }
 
 class _MembresScreenState extends State<MembresScreen> {
-  final _nomController       = TextEditingController();
+  final _nomController = TextEditingController();
   final _telephoneController = TextEditingController();
   int _rang = 1;
 
@@ -72,7 +72,8 @@ class _MembresScreenState extends State<MembresScreen> {
               child: Stack(
                 children: [
                   Container(
-                    width: 80, height: 80,
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
                       color: TColors.surface,
                       shape: BoxShape.circle,
@@ -82,16 +83,18 @@ class _MembresScreenState extends State<MembresScreen> {
                         color: TColors.textMuted, size: 40),
                   ),
                   Positioned(
-                    bottom: 0, right: 0,
+                    bottom: 0,
+                    right: 0,
                     child: Container(
-                      width: 26, height: 26,
+                      width: 26,
+                      height: 26,
                       decoration: BoxDecoration(
                         color: TColors.primary,
                         shape: BoxShape.circle,
                         border: Border.all(color: TColors.bg, width: 2),
                       ),
-                      child: const Icon(Icons.add,
-                          color: Colors.white, size: 14),
+                      child:
+                          const Icon(Icons.add, color: Colors.white, size: 14),
                     ),
                   ),
                 ],
@@ -107,7 +110,8 @@ class _MembresScreenState extends State<MembresScreen> {
               style: TText.body,
               decoration: const InputDecoration(
                 hintText: 'ex: Jean Koffi',
-                prefixIcon: Icon(Iconsax.user, color: TColors.textLight, size: 18),
+                prefixIcon:
+                    Icon(Iconsax.user, color: TColors.textLight, size: 18),
               ),
             ),
             const SizedBox(height: 20),
@@ -121,13 +125,15 @@ class _MembresScreenState extends State<MembresScreen> {
               style: TText.body,
               decoration: const InputDecoration(
                 hintText: 'ex: 07 XX XX XX XX',
-                prefixIcon: Icon(Iconsax.call, color: TColors.textLight, size: 18),
+                prefixIcon:
+                    Icon(Iconsax.call, color: TColors.textLight, size: 18),
               ),
             ),
             const SizedBox(height: 20),
 
             // Rang dans l'ordre des tours
-            _SectionLabel(label: 'Rang (ordre des tours)', icon: Iconsax.ranking),
+            _SectionLabel(
+                label: 'Rang (ordre des tours)', icon: Iconsax.ranking),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -147,7 +153,8 @@ class _MembresScreenState extends State<MembresScreen> {
                           if (_rang > 1) setState(() => _rang--);
                         },
                         child: Container(
-                          width: 32, height: 32,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: TColors.bg,
                             borderRadius: BorderRadius.circular(8),
@@ -171,7 +178,8 @@ class _MembresScreenState extends State<MembresScreen> {
                       GestureDetector(
                         onTap: () => setState(() => _rang++),
                         child: Container(
-                          width: 32, height: 32,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: TColors.primary,
                             borderRadius: BorderRadius.circular(8),
@@ -205,12 +213,12 @@ class _MembresScreenState extends State<MembresScreen> {
                   style: TText.body,
                   icon: const Icon(Icons.keyboard_arrow_down_rounded,
                       color: TColors.textLight),
-                  items: ['Membre', 'Administrateur'].map((r) =>
-                    DropdownMenuItem(
-                      value: r,
-                      child: Text(r, style: TText.body),
-                    )
-                  ).toList(),
+                  items: ['Membre', 'Administrateur']
+                      .map((r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(r, style: TText.body),
+                          ))
+                      .toList(),
                   onChanged: (_) {},
                 ),
               ),

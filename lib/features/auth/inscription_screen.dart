@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../shared/services/supabase_service.dart';
 
 class InscriptionScreen extends StatefulWidget {
   const InscriptionScreen({super.key});
@@ -27,6 +28,47 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
+  }
+
+  bool _loading = false;
+  Future<void> _inscription() async {
+    if (_nomController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remplissez tous les champs')),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Les mots de passe ne correspondent pas')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      await SupabaseService.inscription(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        nom: _nomController.text.trim(),
+        telephone: _phoneController.text.trim(),
+      );
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -171,8 +213,17 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
 
               // Bouton S'inscrire
               ElevatedButton(
-                onPressed: () => context.go('/home'),
-                child: Text("S'inscrire", style: TText.button),
+                onPressed: _loading ? null : _inscription,
+                child: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text("S'inscrire", style: TText.button),
               ),
               const SizedBox(height: 24),
 

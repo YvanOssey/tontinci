@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   iconsax: ^0.0.8
+  supabase_flutter: ^2.5.0
 
   # Navigation
   go_router: ^14.0.0
