@@ -168,6 +168,35 @@ class SupabaseService {
         .update({'lu': true}).eq('id', notificationId);
   }
 
+  static Future<Map<String, dynamic>> getStats() async {
+    // Nombre de groupes actifs
+    final tontines =
+        await client.from('tontines').select().eq('admin_id', currentUser!.id);
+
+    // Nombre de membres totaux
+    int totalMembres = 0;
+    for (final t in tontines) {
+      final membres =
+          await client.from('members').select().eq('tontine_id', t['id']);
+      totalMembres += (membres as List).length;
+    }
+
+    // Total épargnes (somme des paiements validés)
+    final payments =
+        await client.from('payments').select().eq('statut', 'paye');
+
+    int totalEpargnes = 0;
+    for (final p in payments) {
+      totalEpargnes += (p['montant'] as int);
+    }
+
+    return {
+      'groupes_actifs': tontines.length,
+      'membres_totaux': totalMembres,
+      'epargnes_totales': totalEpargnes,
+    };
+  }
+
   // ── SCORE CONFIANCE IA ────────────────────────────────────────────────────
 
   static Future<int> calculerScoreConfiance(String userId) async {

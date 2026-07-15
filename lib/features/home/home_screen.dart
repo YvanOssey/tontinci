@@ -14,9 +14,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-
   List<Map<String, dynamic>> _groupes = [];
   bool _loadingGroupes = true;
+  Map<String, dynamic> _stats = {
+    'groupes_actifs': 0,
+    'membres_totaux': 0,
+    'epargnes_totales': 0,
+  };
 
   @override
   void initState() {
@@ -27,8 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _chargerGroupes() async {
     try {
       final data = await SupabaseService.getTontines();
+      final stats = await SupabaseService.getStats();
       setState(() {
         _groupes = data;
+        _stats = stats;
         _loadingGroupes = false;
       });
     } catch (e) {
@@ -124,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _StatCard(
                           icon: Iconsax.people,
                           label: 'Groupes actifs',
-                          value: '24',
+                          value: '${_stats['groupes_actifs']}',
                           iconBg: const Color(0xFF2A1A00),
                           iconColor: TColors.primary,
                           valueColor: TColors.primary,
@@ -132,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _StatCard(
                           icon: Iconsax.profile_2user,
                           label: 'Membres totaux',
-                          value: '50',
+                          value: '${_stats['membres_totaux']}',
                           iconBg: const Color(0xFF1A0A2E),
                           iconColor: const Color(0xFFAB6FD8),
                           valueColor: const Color(0xFFAB6FD8),
@@ -140,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _StatCard(
                           icon: Iconsax.wallet,
                           label: 'Epargnes totales',
-                          value: '100,000\nFCFA',
+                          value: '${_stats['epargnes_totales']}\nFCFA',
                           iconBg: const Color(0xFF0A2A10),
                           iconColor: const Color(0xFF4CAF50),
                           valueColor: const Color(0xFF4CAF50),
@@ -148,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _StatCard(
                           icon: Iconsax.money_send,
                           label: 'Prêt en cours',
-                          value: '150,000\nFCFA',
+                          value: '0\nFCFA',
                           iconBg: const Color(0xFF2A1A00),
                           iconColor: TColors.primary,
                           valueColor: TColors.primary,

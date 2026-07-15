@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/theme.dart';
+import '../../shared/services/supabase_service.dart';
 
 class DetailTontineScreen extends StatefulWidget {
   final String nom;
@@ -15,28 +16,40 @@ class DetailTontineScreen extends StatefulWidget {
 class _DetailTontineScreenState extends State<DetailTontineScreen> {
   int _tabIndex = 0;
 
-  final List<Map<String, dynamic>> _membres = [
-    {'nom': 'Jean Koffi', 'initiales': 'JK', 'statut': 'paye', 'dark': true},
-    {
-      'nom': 'Aminata Diarra',
-      'initiales': 'AD',
-      'statut': 'paye',
-      'dark': false
-    },
-    {
-      'nom': 'Moussa Traoré',
-      'initiales': 'MT',
-      'statut': 'retard',
-      'dark': true
-    },
-    {'nom': 'Fatou Sow', 'initiales': 'FS', 'statut': 'paye', 'dark': false},
-    {
-      'nom': 'Abdoulaye Camara',
-      'initiales': 'AC',
-      'statut': 'retard',
-      'dark': true
-    },
-  ];
+  List<Map<String, dynamic>> _membres = [];
+  bool _loadingMembres = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerMembres();
+  }
+
+  Future<void> _chargerMembres() async {
+    try {
+      // Récupérer l'ID de la tontine par son nom
+      final tontines = await SupabaseService.client
+          .from('tontines')
+          .select()
+          .eq('nom', widget.nom)
+          .limit(1);
+
+      if (tontines.isEmpty) {
+        setState(() => _loadingMembres = false);
+        return;
+      }
+
+      final tontineId = tontines[0]['id'];
+      final membres = await SupabaseService.getMembres(tontineId);
+
+      setState(() {
+        _membres = membres;
+        _loadingMembres = false;
+      });
+    } catch (e) {
+      setState(() => _loadingMembres = false);
+    }
+  }
 
   final List<IconData> _tabIcons = [
     Iconsax.people,
@@ -282,6 +295,27 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
   }
 
   Widget _buildMembres() {
+    if (_loadingMembres) {
+      return const Center(
+        child: CircularProgressIndicator(color: TColors.primary),
+      );
+    }
+
+    if (_membres.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Iconsax.people, size: 60, color: TColors.textMuted),
+            const SizedBox(height: 16),
+            Text('Aucun membre pour l\'instant', style: TText.bodyMuted),
+            const SizedBox(height: 8),
+            Text('Ajoutez votre premier membre !', style: TText.caption),
+          ],
+        ),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: _membres.length,
@@ -289,7 +323,13 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
           const Divider(color: TColors.border, height: 1),
       itemBuilder: (context, index) {
         final m = _membres[index];
-        final bool paye = m['statut'] == 'paye';
+        final user = m['users'] as Map<String, dynamic>? ?? {};
+        final nom = user['nom'] ?? 'Inconnu';
+        final initiales = nom.length >= 2
+            ? nom.substring(0, 2).toUpperCase()
+            : nom.toUpperCase();
+        final bool dark = index % 2 == 0;
+
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
@@ -299,12 +339,12 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: m['dark'] ? const Color(0xFF1A1A1A) : TColors.primary,
+                  color: dark ? const Color(0xFF1A1A1A) : TColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
-                    m['initiales'],
+                    initiales,
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -320,7 +360,7 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(m['nom'],
+                    Text(nom,
                         style:
                             TText.body.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
@@ -328,25 +368,21 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color:
-                            paye ? TColors.successLight : TColors.warningLight,
+                        color: TColors.successLight,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            paye ? Icons.check_rounded : Iconsax.clock,
-                            size: 12,
-                            color: paye ? TColors.success : TColors.warning,
-                          ),
+                          const Icon(Icons.check_rounded,
+                              size: 12, color: TColors.success),
                           const SizedBox(width: 4),
                           Text(
-                            paye ? 'Payé' : 'En retard',
+                            'Actif',
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: paye ? TColors.success : TColors.warning,
+                              color: TColors.success,
                             ),
                           ),
                         ],

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/theme.dart';
+import '../../shared/services/supabase_service.dart';
 
 class MembresScreen extends StatefulWidget {
   const MembresScreen({super.key});
@@ -12,6 +13,7 @@ class MembresScreen extends StatefulWidget {
 }
 
 class _MembresScreenState extends State<MembresScreen> {
+  bool _loading = false;
   final _nomController = TextEditingController();
   final _telephoneController = TextEditingController();
   int _rang = 1;
@@ -21,6 +23,69 @@ class _MembresScreenState extends State<MembresScreen> {
     _nomController.dispose();
     _telephoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _ajouterMembre() async {
+    if (_nomController.text.isEmpty || _telephoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remplissez tous les champs')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      // Chercher si l'utilisateur existe déjà
+      final users = await SupabaseService.client
+          .from('users')
+          .select()
+          .eq('telephone', _telephoneController.text.trim());
+
+      String userId;
+
+      if (users.isEmpty) {
+        // Créer l'utilisateur
+        final newUser = await SupabaseService.client
+            .from('users')
+            .insert({
+              'nom': _nomController.text.trim(),
+              'telephone': _telephoneController.text.trim(),
+            })
+            .select()
+            .single();
+        userId = newUser['id'];
+      } else {
+        userId = users[0]['id'];
+      }
+
+      // Récupérer la tontine active (dernière créée)
+      final tontines = await SupabaseService.getTontines();
+      if (tontines.isEmpty) {
+        throw Exception('Aucune tontine trouvée');
+      }
+
+      await SupabaseService.ajouterMembre(
+        tontineId: tontines[0]['id'],
+        userId: userId,
+        rang: _rang,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Membre ajouté avec succès !')),
+        );
+        context.go('/tontine/groupes');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -227,15 +292,22 @@ class _MembresScreenState extends State<MembresScreen> {
 
             // Bouton ajouter
             ElevatedButton(
-              onPressed: () => context.go('/tontine/detail/Afrik Solidaire'),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Iconsax.user_add, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Text('Ajouter le membre', style: TText.button),
-                ],
-              ),
+              onPressed: _loading ? null : _ajouterMembre,
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Iconsax.user_add, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Text('Ajouter le membre', style: TText.button),
+                      ],
+                    ),
             ),
             const SizedBox(height: 16),
 
