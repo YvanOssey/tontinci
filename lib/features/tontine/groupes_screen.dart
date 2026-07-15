@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/theme.dart';
+import '../../shared/services/supabase_service.dart';
 
 class GroupesScreen extends StatefulWidget {
   const GroupesScreen({super.key});
@@ -12,52 +13,26 @@ class GroupesScreen extends StatefulWidget {
 }
 
 class _GroupesScreenState extends State<GroupesScreen> {
-  final List<Map<String, dynamic>> _groupes = [
-    {
-      'nom': 'Afrik Solidaire',
-      'membres': 15,
-      'cotisation': '10 000',
-      'frequence': 'Mensuelle',
-      'total': '150 000',
-      'icon': Iconsax.people,
-      'iconColor': TColors.primary,
-      'iconBg': const Color(0xFF2A1A00),
-      'prochain': 'Yvan — Août 2026',
-    },
-    {
-      'nom': 'Union des Femmes',
-      'membres': 20,
-      'cotisation': '5 000',
-      'frequence': 'Hebdomadaire',
-      'total': '100 000',
-      'icon': Iconsax.woman,
-      'iconColor': const Color(0xFFAB6FD8),
-      'iconBg': const Color(0xFF1A0A2E),
-      'prochain': 'Marie — Sept 2026',
-    },
-    {
-      'nom': 'Jeunesses Unies',
-      'membres': 10,
-      'cotisation': '20 000',
-      'frequence': 'Mensuelle',
-      'total': '200 000',
-      'icon': Iconsax.profile_2user,
-      'iconColor': const Color(0xFF4CAF50),
-      'iconBg': const Color(0xFF0A2A10),
-      'prochain': 'Paul — Oct 2026',
-    },
-    {
-      'nom': 'Femmes du quartier',
-      'membres': 7,
-      'cotisation': '15 000',
-      'frequence': 'Mensuelle',
-      'total': '105 000',
-      'icon': Iconsax.home,
-      'iconColor': const Color(0xFF29B6F6),
-      'iconBg': const Color(0xFF0A1A2E),
-      'prochain': 'Sarah — Nov 2026',
-    },
-  ];
+  List<Map<String, dynamic>> _groupes = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerGroupes();
+  }
+
+  Future<void> _chargerGroupes() async {
+    try {
+      final data = await SupabaseService.getTontines();
+      setState(() {
+        _groupes = data;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,25 +103,48 @@ class _GroupesScreenState extends State<GroupesScreen> {
 
             // Liste
             Expanded(
-              child: ListView.separated(
-                itemCount: _groupes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final g = _groupes[index];
-                  return _GroupeDetailCard(
-                    nom: g['nom'],
-                    membres: g['membres'],
-                    cotisation: g['cotisation'],
-                    frequence: g['frequence'],
-                    total: g['total'],
-                    prochain: g['prochain'],
-                    icon: g['icon'],
-                    iconColor: g['iconColor'],
-                    iconBg: g['iconBg'],
-                    onTap: () => context.go('/tontine/detail/${g['nom']}'),
-                  );
-                },
-              ),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: TColors.primary))
+                  : _groupes.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Iconsax.people,
+                                  size: 60, color: TColors.textMuted),
+                              const SizedBox(height: 16),
+                              Text('Aucun groupe pour l\'instant',
+                                  style: TText.bodyMuted),
+                              const SizedBox(height: 8),
+                              Text('Créez votre premier groupe !',
+                                  style: TText.caption),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: _groupes.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final tontine = _groupes[index];
+                            return _GroupeDetailCard(
+                              nom: tontine['nom'] ?? '',
+                              membres: tontine['nb_membres'] ?? 0,
+                              cotisation: tontine['montant'].toString(),
+                              frequence: tontine['frequence'] ?? '',
+                              total:
+                                  (tontine['montant'] * tontine['nb_membres'])
+                                      .toString(),
+                              prochain: 'À définir',
+                              icon: Iconsax.people,
+                              iconColor: TColors.primary,
+                              iconBg: const Color(0xFF2A1A00),
+                              onTap: () => context
+                                  .go('/tontine/detail/${tontine['nom']}'),
+                            );
+                          },
+                        ),
             ),
           ],
         ),

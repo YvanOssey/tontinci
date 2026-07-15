@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import 'package:iconsax/iconsax.dart';
+import '../../shared/services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,36 +15,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Map<String, dynamic>> _groupes = [
-    {
-      'nom': 'Afrik Solidaire',
-      'membres': 15,
-      'icon': Iconsax.people,
-      'iconColor': TColors.primary,
-      'iconBg': const Color(0xFF2A1A00),
-    },
-    {
-      'nom': 'Union des Femmes',
-      'membres': 20,
-      'icon': Iconsax.woman,
-      'iconColor': const Color(0xFFAB6FD8),
-      'iconBg': const Color(0xFF1A0A2E),
-    },
-    {
-      'nom': 'Jeunesses Unies',
-      'membres': 10,
-      'icon': Iconsax.profile_2user,
-      'iconColor': const Color(0xFF4CAF50),
-      'iconBg': const Color(0xFF0A2A10),
-    },
-    {
-      'nom': 'Femmes du quartier',
-      'membres': 7,
-      'icon': Iconsax.home,
-      'iconColor': const Color(0xFF29B6F6),
-      'iconBg': const Color(0xFF0A1A2E),
-    },
-  ];
+  List<Map<String, dynamic>> _groupes = [];
+  bool _loadingGroupes = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerGroupes();
+  }
+
+  Future<void> _chargerGroupes() async {
+    try {
+      final data = await SupabaseService.getTontines();
+      setState(() {
+        _groupes = data;
+        _loadingGroupes = false;
+      });
+    } catch (e) {
+      setState(() => _loadingGroupes = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,24 +179,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // Liste des groupes
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _groupes.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final g = _groupes[index];
-                        return _GroupeCard(
-                          nom: g['nom'],
-                          membres: g['membres'],
-                          icon: g['icon'],
-                          iconColor: g['iconColor'],
-                          iconBg: g['iconBg'],
-                          onTap: () =>
-                              context.go('/tontine/detail/${g['nom']}'),
-                        );
-                      },
-                    ),
+                    _loadingGroupes
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: TColors.primary))
+                        : _groupes.isEmpty
+                            ? Center(
+                                child: Text('Aucun groupe',
+                                    style: TText.bodyMuted),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _groupes.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final tontine = _groupes[index];
+                                  return _GroupeCard(
+                                    nom: tontine['nom'] ?? '',
+                                    membres: tontine['nb_membres'] ?? 0,
+                                    icon: Iconsax.people,
+                                    iconColor: TColors.primary,
+                                    iconBg: const Color(0xFF2A1A00),
+                                    onTap: () => context.go(
+                                        '/tontine/detail/${tontine['nom']}'),
+                                  );
+                                },
+                              ),
                     const SizedBox(height: 20),
                   ],
                 ),

@@ -78,9 +78,10 @@ class SupabaseService {
   // Récupérer les tontines de l'utilisateur
   static Future<List<Map<String, dynamic>>> getTontines() async {
     final response = await client
-        .from('members')
-        .select('tontine_id, tontines(*)')
-        .eq('user_id', currentUser!.id);
+        .from('tontines')
+        .select()
+        .eq('admin_id', currentUser!.id)
+        .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
   }

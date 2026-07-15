@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/theme.dart';
+import '../../shared/services/supabase_service.dart';
 
 class CreateTontineScreen extends StatefulWidget {
   const CreateTontineScreen({super.key});
@@ -12,6 +13,7 @@ class CreateTontineScreen extends StatefulWidget {
 }
 
 class _CreateTontineScreenState extends State<CreateTontineScreen> {
+  bool _loading = false;
   final _nomController = TextEditingController();
   final _cotisationController = TextEditingController();
   final _membresController = TextEditingController();
@@ -60,6 +62,45 @@ class _CreateTontineScreenState extends State<CreateTontineScreen> {
     if (cotisation == 0 || membres == 0) return '— FCFA';
     final total = cotisation * membres;
     return '${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]} ')} FCFA';
+  }
+
+  Future<void> _creerTontine() async {
+    if (_nomController.text.isEmpty ||
+        _cotisationController.text.isEmpty ||
+        _membresController.text.isEmpty ||
+        _dateDebut == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remplissez tous les champs')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      await SupabaseService.creerTontine(
+        nom: _nomController.text.trim(),
+        montant: int.parse(_cotisationController.text.replaceAll(' ', '')),
+        frequence: _frequence,
+        dateDebut:
+            '${_dateDebut!.year}-${_dateDebut!.month.toString().padLeft(2, '0')}-${_dateDebut!.day.toString().padLeft(2, '0')}',
+        nbMembres: int.parse(_membresController.text.trim()),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Groupe créé avec succès !')),
+        );
+        context.go('/tontine/groupes');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -253,15 +294,25 @@ class _CreateTontineScreenState extends State<CreateTontineScreen> {
 
             // Bouton créer
             ElevatedButton(
-              onPressed: () => context.go('/tontine/groupes'),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Iconsax.people, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Text('Créer le groupe', style: TText.button),
-                ],
-              ),
+              onPressed: _loading ? null : _creerTontine,
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Iconsax.people,
+                            color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Text('Créer le groupe', style: TText.button),
+                      ],
+                    ),
             ),
             const SizedBox(height: 16),
 
