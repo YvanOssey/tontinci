@@ -6,7 +6,8 @@ import '../../core/theme.dart';
 import '../../shared/services/supabase_service.dart';
 
 class MembresScreen extends StatefulWidget {
-  const MembresScreen({super.key});
+  final String nom;
+  const MembresScreen({super.key, required this.nom});
 
   @override
   State<MembresScreen> createState() => _MembresScreenState();
@@ -36,46 +37,52 @@ class _MembresScreenState extends State<MembresScreen> {
     setState(() => _loading = true);
 
     try {
-      // Chercher si l'utilisateur existe déjà
-      final users = await SupabaseService.client
+      // Créer un nouvel utilisateur
+      final newUser = await SupabaseService.client
           .from('users')
+          .insert({
+            'nom': _nomController.text.trim(),
+            'telephone': _telephoneController.text.trim(),
+          })
           .select()
-          .eq('telephone', _telephoneController.text.trim());
+          .single();
 
-      String userId;
+      final String userId = newUser['id'];
 
-      if (users.isEmpty) {
-        // Créer l'utilisateur
-        final newUser = await SupabaseService.client
-            .from('users')
-            .insert({
-              'nom': _nomController.text.trim(),
-              'telephone': _telephoneController.text.trim(),
-            })
-            .select()
-            .single();
-        userId = newUser['id'];
-      } else {
-        userId = users[0]['id'];
-      }
+      // Récupérer la tontine par son nom
+      final tontines = await SupabaseService.client
+          .from('tontines')
+          .select()
+          .eq('nom', widget.nom)
+          .limit(1);
 
-      // Récupérer la tontine active (dernière créée)
-      final tontines = await SupabaseService.getTontines();
-      if (tontines.isEmpty) {
-        throw Exception('Aucune tontine trouvée');
-      }
+      if (tontines.isEmpty) throw Exception('Tontine introuvable');
 
+      final tontineId = tontines[0]['id'];
+
+      // Ajouter le membre
       await SupabaseService.ajouterMembre(
-        tontineId: tontines[0]['id'],
+        tontineId: tontineId,
         userId: userId,
         rang: _rang,
+      );
+
+      // Supprimer les anciens tours et régénérer
+      await SupabaseService.client
+          .from('turns')
+          .delete()
+          .eq('tontine_id', tontineId);
+
+      await SupabaseService.client.rpc(
+        'generer_turns',
+        params: {'p_tontine_id': tontineId},
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Membre ajouté avec succès !')),
         );
-        context.go('/tontine/groupes');
+        context.go('/tontine/detail/${widget.nom}');
       }
     } catch (e) {
       if (mounted) {
@@ -97,7 +104,7 @@ class _MembresScreenState extends State<MembresScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: TColors.primary, size: 20),
-          onPressed: () => context.go('/tontine/detail/Afrik Solidaire'),
+          onPressed: () => context.go('/tontine/detail/${widget.nom}'),
         ),
         title: Text('Ajouter un membre', style: TText.h3),
       ),
@@ -118,8 +125,7 @@ class _MembresScreenState extends State<MembresScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Iconsax.info_circle,
-                      color: TColors.primary, size: 20),
+                  const Icon(Iconsax.info_circle, color: TColors.primary, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -137,29 +143,24 @@ class _MembresScreenState extends State<MembresScreen> {
               child: Stack(
                 children: [
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 80, height: 80,
                     decoration: BoxDecoration(
                       color: TColors.surface,
                       shape: BoxShape.circle,
                       border: Border.all(color: TColors.border, width: 1.5),
                     ),
-                    child: const Icon(Iconsax.user,
-                        color: TColors.textMuted, size: 40),
+                    child: const Icon(Iconsax.user, color: TColors.textMuted, size: 40),
                   ),
                   Positioned(
-                    bottom: 0,
-                    right: 0,
+                    bottom: 0, right: 0,
                     child: Container(
-                      width: 26,
-                      height: 26,
+                      width: 26, height: 26,
                       decoration: BoxDecoration(
                         color: TColors.primary,
                         shape: BoxShape.circle,
                         border: Border.all(color: TColors.bg, width: 2),
                       ),
-                      child:
-                          const Icon(Icons.add, color: Colors.white, size: 14),
+                      child: const Icon(Icons.add, color: Colors.white, size: 14),
                     ),
                   ),
                 ],
@@ -175,8 +176,7 @@ class _MembresScreenState extends State<MembresScreen> {
               style: TText.body,
               decoration: const InputDecoration(
                 hintText: 'ex: Jean Koffi',
-                prefixIcon:
-                    Icon(Iconsax.user, color: TColors.textLight, size: 18),
+                prefixIcon: Icon(Iconsax.user, color: TColors.textLight, size: 18),
               ),
             ),
             const SizedBox(height: 20),
@@ -190,15 +190,13 @@ class _MembresScreenState extends State<MembresScreen> {
               style: TText.body,
               decoration: const InputDecoration(
                 hintText: 'ex: 07 XX XX XX XX',
-                prefixIcon:
-                    Icon(Iconsax.call, color: TColors.textLight, size: 18),
+                prefixIcon: Icon(Iconsax.call, color: TColors.textLight, size: 18),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Rang dans l'ordre des tours
-            _SectionLabel(
-                label: 'Rang (ordre des tours)', icon: Iconsax.ranking),
+            // Rang
+            _SectionLabel(label: 'Rang (ordre des tours)', icon: Iconsax.ranking),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -214,43 +212,32 @@ class _MembresScreenState extends State<MembresScreen> {
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () {
-                          if (_rang > 1) setState(() => _rang--);
-                        },
+                        onTap: () { if (_rang > 1) setState(() => _rang--); },
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 32, height: 32,
                           decoration: BoxDecoration(
                             color: TColors.bg,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: TColors.border),
                           ),
-                          child: const Icon(Icons.remove,
-                              color: TColors.textMuted, size: 16),
+                          child: const Icon(Icons.remove, color: TColors.textMuted, size: 16),
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          '$_rang',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: TColors.primary,
-                          ),
-                        ),
+                        child: Text('$_rang', style: GoogleFonts.spaceGrotesk(
+                          fontSize: 18, fontWeight: FontWeight.w700, color: TColors.primary,
+                        )),
                       ),
                       GestureDetector(
                         onTap: () => setState(() => _rang++),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 32, height: 32,
                           decoration: BoxDecoration(
                             color: TColors.primary,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.add,
-                              color: Colors.white, size: 16),
+                          child: const Icon(Icons.add, color: Colors.white, size: 16),
                         ),
                       ),
                     ],
@@ -276,14 +263,11 @@ class _MembresScreenState extends State<MembresScreen> {
                   isExpanded: true,
                   dropdownColor: TColors.surface,
                   style: TText.body,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: TColors.textLight),
-                  items: ['Membre', 'Administrateur']
-                      .map((r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(r, style: TText.body),
-                          ))
-                      .toList(),
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: TColors.textLight),
+                  items: ['Membre', 'Administrateur'].map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(r, style: TText.body),
+                  )).toList(),
                   onChanged: (_) {},
                 ),
               ),
@@ -296,9 +280,7 @@ class _MembresScreenState extends State<MembresScreen> {
               child: _loading
                   ? const SizedBox(
                       width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -313,13 +295,11 @@ class _MembresScreenState extends State<MembresScreen> {
 
             // Annuler
             OutlinedButton(
-              onPressed: () => context.go('/tontine/detail/Afrik Solidaire'),
+              onPressed: () => context.go('/tontine/detail/${widget.nom}'),
               child: Text(
                 'Annuler',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: TColors.primary,
+                  fontSize: 15, fontWeight: FontWeight.w600, color: TColors.primary,
                 ),
               ),
             ),
@@ -331,7 +311,6 @@ class _MembresScreenState extends State<MembresScreen> {
   }
 }
 
-// ── Widget SectionLabel ──────────────────────────────────────────────────────
 class _SectionLabel extends StatelessWidget {
   final String label;
   final IconData icon;

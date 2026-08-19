@@ -128,20 +128,28 @@ class _GroupesScreenState extends State<GroupesScreen> {
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final tontine = _groupes[index];
-                            return _GroupeDetailCard(
-                              nom: tontine['nom'] ?? '',
-                              membres: tontine['nb_membres'] ?? 0,
-                              cotisation: tontine['montant'].toString(),
-                              frequence: tontine['frequence'] ?? '',
-                              total:
-                                  (tontine['montant'] * tontine['nb_membres'])
+                            return FutureBuilder<String>(
+                              future: SupabaseService.getProchainBeneficiaire(
+                                  tontine['id']),
+                              builder: (context, snapshot) {
+                                final prochain =
+                                    snapshot.data ?? 'Chargement...';
+                                return _GroupeDetailCard(
+                                  nom: tontine['nom'] ?? '',
+                                  membres: tontine['nb_membres'] ?? 0,
+                                  cotisation: tontine['montant'].toString(),
+                                  frequence: tontine['frequence'] ?? '',
+                                  total: (tontine['montant'] *
+                                          tontine['nb_membres'])
                                       .toString(),
-                              prochain: 'À définir',
-                              icon: Iconsax.people,
-                              iconColor: TColors.primary,
-                              iconBg: const Color(0xFF2A1A00),
-                              onTap: () => context
-                                  .go('/tontine/detail/${tontine['nom']}'),
+                                  prochain: prochain,
+                                  icon: Iconsax.people,
+                                  iconColor: TColors.primary,
+                                  iconBg: const Color(0xFF2A1A00),
+                                  onTap: () => context
+                                      .go('/tontine/detail/${tontine['nom']}'),
+                                );
+                              },
                             );
                           },
                         ),

@@ -72,7 +72,38 @@ class SupabaseService {
         .select()
         .single();
 
+    // Générer automatiquement les tours
+    await client.rpc('generer_turns', params: {'p_tontine_id': response['id']});
+
     return response;
+  }
+
+  static Future<String> getProchainBeneficiaire(String tontineId) async {
+    final response = await client
+        .from('turns')
+        .select('*, members(*, users(*))')
+        .eq('tontine_id', tontineId)
+        .eq('statut', 'encours')
+        .limit(1);
+
+    if (response.isEmpty) {
+      // Chercher le premier tour à venir
+      final avenir = await client
+          .from('turns')
+          .select('*, members(*, users(*))')
+          .eq('tontine_id', tontineId)
+          .eq('statut', 'avenir')
+          .order('date_versement', ascending: true)
+          .limit(1);
+
+      if (avenir.isEmpty) return 'À définir';
+
+      final user = avenir[0]['members']['users'];
+      return user['nom'] ?? 'À définir';
+    }
+
+    final user = response[0]['members']['users'];
+    return user['nom'] ?? 'À définir';
   }
 
   // Récupérer les tontines de l'utilisateur

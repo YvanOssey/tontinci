@@ -19,6 +19,8 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
   List<Map<String, dynamic>> _membres = [];
   bool _loadingMembres = true;
 
+  int _nbMembres = 0;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +46,7 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
 
       setState(() {
         _membres = membres;
+        _nbMembres = membres.length;
         _loadingMembres = false;
       });
     } catch (e) {
@@ -117,7 +120,8 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
                                 const Icon(Iconsax.people,
                                     size: 14, color: TColors.textMuted),
                                 const SizedBox(width: 4),
-                                Text('15 membres', style: TText.bodyMuted),
+                                Text('$_nbMembres membres',
+                                    style: TText.bodyMuted),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -233,7 +237,7 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
       // FAB
       floatingActionButton: _tabIndex == 0
           ? FloatingActionButton(
-              onPressed: () => context.go('/membres'),
+              onPressed: () => context.go('/membres/${widget.nom}'),
               backgroundColor: TColors.primary,
               shape: const CircleBorder(),
               child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -395,26 +399,32 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
               // Boutons edit + delete
               Row(
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: TColors.border),
+                  GestureDetector(
+                    onTap: () => _modifierMembre(context, m),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: TColors.border),
+                      ),
+                      child: const Icon(Iconsax.edit,
+                          size: 16, color: TColors.textMuted),
                     ),
-                    child: const Icon(Iconsax.edit,
-                        size: 16, color: TColors.textMuted),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: TColors.danger),
+                  GestureDetector(
+                    onTap: () => _confirmerSuppression(context, m['id']),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: TColors.danger),
+                      ),
+                      child: const Icon(Iconsax.trash,
+                          size: 16, color: TColors.danger),
                     ),
-                    child: const Icon(Iconsax.trash,
-                        size: 16, color: TColors.danger),
                   ),
                 ],
               ),
@@ -1102,7 +1112,7 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
                   icon: Iconsax.user_add,
                   label: 'Ajouter un membre',
                   color: TColors.text,
-                  onTap: () => context.go('/membres'),
+                  onTap: () => context.go('/membres/${widget.nom}'),
                 ),
                 const Divider(color: TColors.border, height: 1),
                 _ActionItem(
@@ -1130,6 +1140,191 @@ class _DetailTontineScreenState extends State<DetailTontineScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _modifierMembre(
+      BuildContext context, Map<String, dynamic> membre) async {
+    final user = membre['users'] as Map<String, dynamic>? ?? {};
+    final nomController = TextEditingController(text: user['nom'] ?? '');
+    final telController = TextEditingController(text: user['telephone'] ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: TColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: TColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Modifier le membre', style: TText.h3),
+              const SizedBox(height: 20),
+
+              // Nom
+              Text('Nom complet', style: TText.label),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: nomController,
+                style: TText.body,
+                decoration: const InputDecoration(
+                  hintText: 'Nom complet',
+                  prefixIcon:
+                      Icon(Iconsax.user, color: TColors.textLight, size: 18),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Téléphone
+              Text('Téléphone', style: TText.label),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: telController,
+                style: TText.body,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  hintText: 'Téléphone',
+                  prefixIcon:
+                      Icon(Iconsax.call, color: TColors.textLight, size: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Bouton sauvegarder
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await SupabaseService.client.from('users').update({
+                    'nom': nomController.text.trim(),
+                    'telephone': telController.text.trim(),
+                  }).eq('id', user['id']);
+                  if (mounted) {
+                    setState(() => _loadingMembres = true);
+                    _chargerMembres();
+                  }
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Iconsax.tick_circle,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Text('Sauvegarder', style: TText.button),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Annuler',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: TColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmerSuppression(
+      BuildContext context, String memberId) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: TColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: TColors.dangerLight,
+                  shape: BoxShape.circle,
+                ),
+                child:
+                    const Icon(Iconsax.trash, color: TColors.danger, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text('Supprimer ce membre ?', style: TText.h3),
+              const SizedBox(height: 8),
+              Text(
+                'Cette action est irréversible.',
+                style: TText.bodyMuted,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  // Supprimer d'abord les tours du membre
+                  await SupabaseService.client
+                      .from('turns')
+                      .delete()
+                      .eq('beneficiaire_id', memberId);
+                  // Ensuite supprimer le membre
+                  await SupabaseService.client
+                      .from('members')
+                      .delete()
+                      .eq('id', memberId);
+                  if (mounted) {
+                    setState(() => _loadingMembres = true);
+                    _chargerMembres();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: TColors.danger,
+                ),
+                child: Text('Supprimer', style: TText.button),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Annuler',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: TColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

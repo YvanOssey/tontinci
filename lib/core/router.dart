@@ -29,7 +29,10 @@ final router = GoRouter(
       builder: (c, s) => DetailTontineScreen(nom: s.pathParameters['nom']!),
     ),
     GoRoute(path: '/cotisation', builder: (c, s) => const CotisationScreen()),
-    GoRoute(path: '/membres', builder: (c, s) => const MembresScreen()),
+    GoRoute(
+      path: '/membres/:nom',
+      builder: (c, s) => MembresScreen(nom: s.pathParameters['nom']!),
+    ),
     GoRoute(path: '/calendrier', builder: (c, s) => const CalendrierScreen()),
     GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
     GoRoute(path: '/profil', builder: (c, s) => const ProfilScreen()),
